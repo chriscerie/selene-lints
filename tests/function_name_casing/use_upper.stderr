@@ -1,0 +1,64 @@
+error[function_name_casing]: function names must start with an uppercase letter
+  ┌─ use_upper.lua:1:16
+  │
+1 │ local function foo() end
+  │                ^^^
+  │
+  = try: Foo(...) instead
+
+error[function_name_casing]: function names must start with an uppercase letter
+  ┌─ use_upper.lua:2:16
+  │
+2 │ local function foo(bar) end
+  │                ^^^
+  │
+  = try: Foo(...) instead
+
+error[function_name_casing]: function names must start with an uppercase letter
+  ┌─ use_upper.lua:3:16
+  │
+3 │ local function fOO(bAR) end
+  │                ^^^
+  │
+  = try: FOO(...) instead
+
+error[function_name_casing]: function names must start with an uppercase letter
+  ┌─ use_upper.lua:4:16
+  │
+4 │ local function fOo(bAr) end
+  │                ^^^
+  │
+  = try: FOo(...) instead
+
+error[function_name_casing]: function names must start with an uppercase letter
+  ┌─ use_upper.lua:8:12
+  │
+8 │ function X:a() end
+  │            ^
+  │
+  = try: A(...) instead
+
+error[function_name_casing]: function names must start with an uppercase letter
+   ┌─ use_upper.lua:11:14
+   │
+11 │ function X.X:a() end
+   │              ^
+   │
+   = try: A(...) instead
+
+error[function_name_casing]: function names must start with an uppercase letter
+   ┌─ use_upper.lua:14:12
+   │
+14 │ function X.a() end
+   │            ^
+   │
+   = try: A(...) instead
+
+error[function_name_casing]: function names must start with an uppercase letter
+   ┌─ use_upper.lua:17:14
+   │
+17 │ function x.x.a() end
+   │              ^
+   │
+   = try: A(...) instead
+

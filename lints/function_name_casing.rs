@@ -6,51 +6,96 @@ use full_moon::{
     ast::{self, Ast},
     visitors::Visitor,
 };
+use serde::Deserialize;
 
-pub struct FunctionNameCasingLint;
+#[derive(Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct FunctionNameCasingLintConfig {
+    use_uppercase: bool,
+    allow: Vec<String>,
+}
 
-fn lowercase_first_char(string: &str) -> String {
+pub struct FunctionNameCasingLint {
+    config: FunctionNameCasingLintConfig,
+}
+
+fn correct_name_casing(string: &str, use_uppercase: bool) -> String {
     let mut chars = string.chars();
-    let first_char = chars.next().unwrap().to_lowercase().to_string();
-    let rest = chars.as_str().to_string();
-    first_char + &rest
+    let first_char = chars.next().unwrap();
+    let rest_chars = chars.as_str().to_string();
+
+    if use_uppercase {
+        first_char.to_uppercase().to_string() + &rest_chars
+    } else {
+        first_char.to_lowercase().to_string() + &rest_chars
+    }
+}
+
+fn is_wrong_casing(string: &str, use_uppercase: bool) -> bool {
+    let first_char = string.chars().next().unwrap();
+
+    if use_uppercase {
+        first_char.is_lowercase()
+    } else {
+        first_char.is_uppercase()
+    }
 }
 
 impl Lint for FunctionNameCasingLint {
-    type Config = ();
+    type Config = FunctionNameCasingLintConfig;
     type Error = Infallible;
 
     const SEVERITY: Severity = Severity::Warning;
     const LINT_TYPE: LintType = LintType::Style;
 
-    fn new(_: Self::Config) -> Result<Self, Self::Error> {
-        Ok(FunctionNameCasingLint)
+    fn new(config: Self::Config) -> Result<Self, Self::Error> {
+        Ok(FunctionNameCasingLint { config })
     }
 
     fn pass(&self, ast: &Ast, _: &Context, _: &AstContext) -> Vec<Diagnostic> {
-        let mut visitor = FunctionNameCasingVisitor::default();
+        let mut visitor = FunctionNameCasingVisitor {
+            wrong_casing: Vec::new(),
+            config: self.config.clone(),
+        };
 
         visitor.visit_ast(ast);
 
-        let mut diagnostics = Vec::new();
-
-        for (name, position) in visitor.uppercase_name {
-            diagnostics.push(Diagnostic::new_complete(
-                "function_name_casing",
-                "function names must start with a lowercase letter".to_owned(),
-                Label::new(position),
-                vec![format!("try: {}(...) instead", lowercase_first_char(&name))],
-                Vec::new(),
-            ));
-        }
-
-        diagnostics
+        visitor
+            .wrong_casing
+            .into_iter()
+            .filter(|(name, _)| {
+                !self
+                    .config
+                    .allow
+                    .iter()
+                    .any(|allowed_name| allowed_name == name)
+            })
+            .map(|(name, position)| {
+                Diagnostic::new_complete(
+                    "function_name_casing",
+                    format!(
+                        "function names must start with {} letter",
+                        if self.config.use_uppercase {
+                            "an uppercase"
+                        } else {
+                            "a lowercase"
+                        }
+                    ),
+                    Label::new(position),
+                    vec![format!(
+                        "try: {}(...) instead",
+                        correct_name_casing(&name, self.config.use_uppercase)
+                    )],
+                    Vec::new(),
+                )
+            })
+            .collect()
     }
 }
 
-#[derive(Default)]
 struct FunctionNameCasingVisitor {
-    uppercase_name: Vec<(String, (usize, usize))>,
+    wrong_casing: Vec<(String, (usize, usize))>,
+    config: FunctionNameCasingLintConfig,
 }
 
 impl Visitor for FunctionNameCasingVisitor {
@@ -58,20 +103,20 @@ impl Visitor for FunctionNameCasingVisitor {
         let function_name = declaration.name();
 
         if let Some(name) = function_name.method_name() {
-            if name.to_string().chars().next().unwrap().is_uppercase() {
-                self.uppercase_name.push((name.to_string(), range(name)));
+            if is_wrong_casing(&name.to_string(), self.config.use_uppercase) {
+                self.wrong_casing.push((name.to_string(), range(name)));
             }
         } else if let Some(name) = function_name.names().iter().last() {
-            if name.to_string().chars().next().unwrap().is_uppercase() {
-                self.uppercase_name.push((name.to_string(), range(name)));
+            if is_wrong_casing(&name.to_string(), self.config.use_uppercase) {
+                self.wrong_casing.push((name.to_string(), range(name)));
             }
         }
     }
 
     fn visit_local_function(&mut self, function: &ast::LocalFunction) {
-        let name_str = function.name().to_string();
-        if name_str.chars().next().unwrap().is_uppercase() {
-            self.uppercase_name.push((name_str, range(function.name())));
+        let name = function.name().to_string();
+        if is_wrong_casing(&name, self.config.use_uppercase) {
+            self.wrong_casing.push((name, range(function.name())));
         }
     }
 }
@@ -83,9 +128,35 @@ mod tests {
     #[test]
     fn test_function_name_casing() {
         test_lint(
-            FunctionNameCasingLint::new(()).unwrap(),
+            FunctionNameCasingLint::new(FunctionNameCasingLintConfig::default()).unwrap(),
             "function_name_casing",
             "function_name_casing",
+        );
+    }
+
+    #[test]
+    fn test_use_upper() {
+        test_lint(
+            FunctionNameCasingLint::new(FunctionNameCasingLintConfig {
+                use_uppercase: true,
+                ..Default::default()
+            })
+            .unwrap(),
+            "function_name_casing",
+            "use_upper",
+        );
+    }
+
+    #[test]
+    fn test_allow() {
+        test_lint(
+            FunctionNameCasingLint::new(FunctionNameCasingLintConfig {
+                allow: vec!["Foo".to_string(), "Baz".to_string()],
+                ..Default::default()
+            })
+            .unwrap(),
+            "function_name_casing",
+            "allow",
         );
     }
 }

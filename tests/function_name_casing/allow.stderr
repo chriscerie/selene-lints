@@ -1,0 +1,24 @@
+error[function_name_casing]: function names must start with a lowercase letter
+  ┌─ allow.lua:4:16
+  │
+4 │ local function Bar() end
+  │                ^^^
+  │
+  = try: bar(...) instead
+
+error[function_name_casing]: function names must start with a lowercase letter
+   ┌─ allow.lua:13:12
+   │
+13 │ function x.Bar() end
+   │            ^^^
+   │
+   = try: bar(...) instead
+
+error[function_name_casing]: function names must start with a lowercase letter
+   ┌─ allow.lua:22:12
+   │
+22 │ function x:Bar() end
+   │            ^^^
+   │
+   = try: bar(...) instead
+
